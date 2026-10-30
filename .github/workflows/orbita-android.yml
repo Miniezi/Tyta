@@ -1,0 +1,55 @@
+name: Orbita Android APK
+on:
+  push:
+    branches: [orbita-android-client]
+    paths: ['orbita-android/**', '.github/workflows/orbita-android.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Install Android SDK
+        run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
+      - name: Build and lint
+        working-directory: orbita-android
+        run: gradle --no-daemon :app:assembleDebug :app:lintDebug
+      - name: Prepare signed APK and domain association
+        run: |
+          mkdir -p deliverables
+          cp orbita-android/app/build/outputs/apk/debug/app-debug.apk deliverables/Orbita-Android-test.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs deliverables/Orbita-Android-test.apk > deliverables/signature.txt
+          python3 - <<'PY'
+          import pathlib,json,re
+          text=pathlib.Path('deliverables/signature.txt').read_text()
+          digest=re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]+)',text).group(1).upper()
+          fingerprint=':'.join(digest[i:i+2] for i in range(0,len(digest),2))
+          association=[{'relation':['delegate_permission/common.handle_all_urls'],'target':{'namespace':'android_app','package_name':'site.orbita.client','sha256_cert_fingerprints':[fingerprint]}}]
+          pathlib.Path('deliverables/assetlinks.json').write_text(json.dumps(association,indent=2))
+          print('Certificate SHA-256:',fingerprint)
+          PY
+          git archive --format=zip --output=deliverables/Orbita-Android-source.zip HEAD orbita-android .github/workflows/orbita-android.yml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orbita-android
+          path: deliverables/*
+          if-no-files-found: error
+      - name: Publish test download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "orbita-android-${{ github.run_number }}"
+          deliverables/Orbita-Android-test.apk deliverables/Orbita-Android-source.zip deliverables/assetlinks.json
+          --target "$GITHUB_SHA" --prerelease
+          --title "Орбита Android — тест ${{ github.run_number }}"
+          --notes "Тестовый Android-клиент (Android 8+), подписанный debug-ключом этой сборки. Нужен совместимый браузер. Разрешите уведомления Android и включите push в Орбите. Ключ меняется при новой сборке: может потребоваться переустановка. Голос в фоне требует проверки на устройстве."
