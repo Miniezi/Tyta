@@ -20,3 +20,10 @@ Debug-подпись подходит для тестирования, не дл
 Ключ подписи не включается в артефакт и исходники.
 
 Существующие файлы репозитория не изменяются. Minecraft не используется.
+
+## 1.1: call notification
+Four expanded notification controls: microphone, playback, both, leave. States update only after a confirmed TWA response. Commands are call-session scoped, explicit target states, deduplicated and accepted only on a verified same-origin postMessage channel. Requires compatible browser with TWA postMessage (Chrome 115+), notification permission and use_as_origin DAL relation. No extra microphone permission or WebView is used.
+
+This is an ongoing notification, NOT an Android Telecom call. Android 14+ may allow dismissing it. Browser suspension or Android killing the host process can interrupt controls; there is no native foreground media service. Reopen the client to reconnect. It does not guarantee background microphone operation.
+
+Device acceptance: join, expand notification, test all four actions with a second participant; verify mute/playback states match the page, notification disappears on leaving, old notification cannot control a different session. Repeat locked/unlocked, Bluetooth, notification permission denied, browser back navigation.

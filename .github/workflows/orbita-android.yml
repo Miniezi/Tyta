@@ -38,7 +38,7 @@ jobs:
           text=pathlib.Path('deliverables/signature.txt').read_text()
           digest=re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]+)',text).group(1).upper()
           fingerprint=':'.join(digest[i:i+2] for i in range(0,len(digest),2))
-          association=[{'relation':['delegate_permission/common.handle_all_urls'],'target':{'namespace':'android_app','package_name':'site.orbita.client','sha256_cert_fingerprints':[fingerprint]}}]
+          association=[{'relation':['delegate_permission/common.handle_all_urls','delegate_permission/common.use_as_origin'],'target':{'namespace':'android_app','package_name':'site.orbita.client','sha256_cert_fingerprints':[fingerprint]}}]
           pathlib.Path('deliverables/assetlinks.json').write_text(json.dumps(association,indent=2))
           print('Certificate SHA-256:',fingerprint)
           PY
