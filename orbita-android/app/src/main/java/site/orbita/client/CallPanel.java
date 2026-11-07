@@ -12,6 +12,7 @@ import org.json.JSONObject;
 public final class CallPanel extends BroadcastReceiver {
  private static final int ID=7001;
  private static final String CHANNEL="orbita_voice_controls";
+ static boolean ready;
  private static Context context;
  private static CustomTabsSession session;
  private static String callId="",pending="";
@@ -19,11 +20,11 @@ public final class CallPanel extends BroadcastReceiver {
  private static long sequence;
  private static final Handler handler=new Handler(Looper.getMainLooper());
  private static final Runnable timeout=()->{pending="";if(context!=null){Toast.makeText(context,"Нет ответа от звонка. Откройте Орбиту.",Toast.LENGTH_LONG).show();show();}};
- static void connect(Context c,CustomTabsSession s){context=c.getApplicationContext();session=s;}
- static void disconnect(){if(context!=null)((NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE)).cancel(ID);session=null;callId="";pending="";handler.removeCallbacksAndMessages(null);}
+ static void connect(Context c,CustomTabsSession s){context=c.getApplicationContext();session=s;ready=false;}
+ static void disconnect(){if(context!=null)((NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE)).cancel(ID);session=null;ready=false;callId="";pending="";handler.removeCallbacksAndMessages(null);}
  static void receive(String text){try{
   if(text.length()>4096)return;JSONObject j=new JSONObject(text);if(!"call-state".equals(j.optString("type")))return;
-  String id=j.optString("session");if(id.length()>200)return;
+  ready=true;String id=j.optString("session");if(id.length()>200)return;
   if(!j.optBoolean("active")||id.isEmpty()){if(context!=null)((NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE)).cancel(ID);callId="";pending="";handler.removeCallbacks(timeout);return;}
   callId=id;muted=j.optBoolean("muted");deaf=j.optBoolean("deaf");
   if(pending.equals(j.optString("ack"))){pending="";handler.removeCallbacks(timeout);}

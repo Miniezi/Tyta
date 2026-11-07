@@ -15,19 +15,20 @@ public final class OrbitaActivity extends Activity {
  static final Uri ORIGIN=Uri.parse("https://orbita-chat.misamisani112.chatgpt.site");
  private CustomTabsSession session;
  private boolean bound,validated,navigated,launched,away;
+ private int channelAttempts;
  private final Handler main=new Handler(Looper.getMainLooper());
  private final CustomTabsCallback callback=new CustomTabsCallback(){
   @Override public void onRelationshipValidationResult(int relation,Uri origin,boolean result,Bundle extras){
    if(relation==CustomTabsService.RELATION_USE_AS_ORIGIN&&ORIGIN.equals(origin)){validated=result;channel();}
   }
   @Override public void onNavigationEvent(int event,Bundle extras){
-   if(event==NAVIGATION_STARTED){navigated=false;CallPanel.disconnect();}
+   if(event==NAVIGATION_STARTED){navigated=false;channelAttempts=0;CallPanel.disconnect();}
    if(event==NAVIGATION_FINISHED){navigated=true;channel();}
   }
-  @Override public void onMessageChannelReady(Bundle extras){if(validated&&session!=null){CallPanel.connect(OrbitaActivity.this,session);session.postMessage("orbita-call-bridge-v1",null);}}
+  @Override public void onMessageChannelReady(Bundle extras){if(validated&&session!=null){CallPanel.connect(OrbitaActivity.this,session);session.postMessage("orbita-call-bridge-v1",null);main.postDelayed(()->{if(!CallPanel.ready&&channelAttempts<4)channel();},2000);}}
   @Override public void onPostMessage(String message,Bundle extras){if(validated)main.post(()->CallPanel.receive(message));}
  };
- private void channel(){if(validated&&navigated&&session!=null)session.requestPostMessageChannel(ORIGIN,ORIGIN,new Bundle());}
+ private void channel(){if(validated&&navigated&&session!=null){channelAttempts++;session.requestPostMessageChannel(ORIGIN,ORIGIN,new Bundle());}}
  private final CustomTabsServiceConnection connection=new CustomTabsServiceConnection(){
   @Override public void onCustomTabsServiceConnected(ComponentName name,CustomTabsClient client){
    client.warmup(0);session=client.newSession(callback);if(session==null){fail();return;}
